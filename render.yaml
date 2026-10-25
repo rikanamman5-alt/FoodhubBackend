@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: foodhub-backend
+    env: node
+    buildCommand: npm install && npm run build
+    startCommand: npx prisma migrate deploy && node dist/index.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        generateValue: true
+      - key: CLIENT_URL
+        sync: false
