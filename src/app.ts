@@ -22,8 +22,8 @@ app.use(cors({
   origin: '*',
   credentials: false,
 }));
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
 app.get('/', (req, res) => {
@@ -37,8 +37,7 @@ app.use('/api/merchant', merchantRoutes);
 app.use('/api/customer', customerRoutes);
 app.use('/api/upload', uploadRoutes);
 
-app.use((req, res) => {
-  res.status(404).json({ success: false, message: `Route not found: ${req.method} ${req.originalUrl}` });
+app.listen(process.env.PORT || 5000, '0.0.0.0', () => {
+  console.log('Server running');
 });
-
 export default app;
