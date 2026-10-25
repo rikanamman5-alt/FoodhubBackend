@@ -1,0 +1,244 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  MERCHANT
+  ADMIN
+  SUPERADMIN
+}
+
+enum AccountStatus {
+  PENDING
+  APPROVED
+  SUSPENDED
+  REJECTED
+}
+
+enum SubscriptionStatus {
+  TRIAL
+  ACTIVE
+  EXPIRED
+  SUSPENDED
+}
+
+enum OrderStatus {
+  PENDING
+  CONFIRMED
+  PREPARING
+  OUT_FOR_DELIVERY
+  DELIVERED
+  CANCELLED
+}
+
+enum PaymentMethod {
+  COD
+  GCASH
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  REJECTED
+  VERIFIED
+}
+
+model User {
+  id                String             @id @default(cuid())
+  firstName         String
+  lastName          String
+  email             String             @unique
+  phone             String?
+  password          String
+  role              Role               @default(CUSTOMER)
+  accountStatus     AccountStatus      @default(PENDING)
+  approvedAt        DateTime?
+  approvedById      String?
+  approvedBy        User?              @relation("ApprovedBy", fields: [approvedById], references: [id])
+  approvedUsers     User[]             @relation("ApprovedBy")
+  subscriptionStatus SubscriptionStatus @default(TRIAL)
+  subscriptionStart DateTime?
+  subscriptionEnd   DateTime?
+  trialDays         Int                @default(7)
+  lastLoginAt       DateTime?
+  isActive          Boolean            @default(true)
+  avatar            String?
+  address           String?
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  store             Store?
+  orders            Order[]            @relation("CustomerOrders")
+  notifications     Notification[]
+  activityLogs      ActivityLog[]
+
+  @@index([email])
+  @@index([role, accountStatus])
+}
+
+model Store {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  logo        String?
+  address     String
+  phone       String
+  isOpen      Boolean  @default(true)
+  isActive    Boolean  @default(true)
+  ownerId     String   @unique
+  owner       User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  categories  Category[]
+  products    Product[]
+  orders      Order[]
+}
+
+model Category {
+  id        String    @id @default(cuid())
+  name      String
+  slug      String
+  image     String?
+  isActive  Boolean   @default(true)
+  storeId   String
+  store     Store     @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  products  Product[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@unique([storeId, slug])
+}
+
+model Product {
+  id          String      @id @default(cuid())
+  name        String
+  slug        String
+  description String?
+  price       Decimal     @db.Decimal(10, 2)
+  image       String?
+  isAvailable Boolean     @default(true)
+  isActive    Boolean     @default(true)
+  categoryId  String
+  category    Category    @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  storeId     String
+  store       Store       @relation(fields: [storeId], references: [id], onDelete: Cascade)
+  orderItems  OrderItem[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([storeId, categoryId])
+}
+
+model Order {
+  id                String        @id @default(cuid())
+  orderNumber       String        @unique
+  customerId        String
+  customer          User          @relation("CustomerOrders", fields: [customerId], references: [id])
+  storeId           String
+  store             Store         @relation(fields: [storeId], references: [id])
+  status            OrderStatus   @default(PENDING)
+  paymentMethod     PaymentMethod @default(COD)
+  paymentStatus     PaymentStatus @default(PENDING)
+  subtotal          Decimal       @db.Decimal(10, 2)
+  deliveryFee       Decimal       @default(0) @db.Decimal(10, 2)
+  total             Decimal       @db.Decimal(10, 2)
+  notes             String?
+  deliveryAddress   String
+  deliveryPhone     String
+  gcashRefNumber    String?
+  gcashProofImage   String?
+  gcashVerifiedAt   DateTime?
+  gcashVerifiedById String?
+  confirmedAt       DateTime?
+  preparingAt       DateTime?
+  outForDeliveryAt  DateTime?
+  deliveredAt       DateTime?
+  cancelledAt       DateTime?
+  cancellationReason String?
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+
+  items             OrderItem[]
+
+  @@index([customerId, status])
+  @@index([storeId, status])
+  @@index([orderNumber])
+}
+
+model OrderItem {
+  id        String  @id @default(cuid())
+  orderId   String
+  order     Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product @relation(fields: [productId], references: [id])
+  quantity  Int
+  price     Decimal @db.Decimal(10, 2)
+  subtotal  Decimal @db.Decimal(10, 2)
+  createdAt DateTime @default(now())
+}
+
+model PaymentSettings {
+  id           String   @id @default(cuid())
+  gcashName    String?
+  gcashNumber  String?
+  gcashQrImage String?
+  isActive     Boolean  @default(true)
+  updatedAt    DateTime @updatedAt
+  updatedById  String?
+}
+
+model SubscriptionSettings {
+  id              String   @id @default(cuid())
+  defaultTrialDays Int      @default(7)
+  updatedAt       DateTime @updatedAt
+  updatedById     String?
+}
+
+model SiteSettings {
+  id        String   @id @default(cuid())
+  appName   String   @default("Foodhub")
+  logo      String?
+  contactEmail String?
+  contactPhone String?
+  address   String?
+  updatedAt DateTime @updatedAt
+  updatedById String?
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("info")
+  isRead    Boolean  @default(false)
+  link      String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  details   String?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
