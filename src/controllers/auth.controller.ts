@@ -1,8 +1,8 @@
 import { Request, Response } from 'express';
 import bcrypt from 'bcryptjs';
-import prisma from '../prisma/client.js';
-import { generateToken } from '../utils/jwt.js';
-import { AuthRequest } from '../middlewares/auth.middleware.js';
+import prisma from '../prisma/client';
+import { generateToken } from '../utils/jwt';
+import { AuthRequest } from '../middlewares/auth.middleware';
 
 export const register = async (req: Request, res: Response) => {
   try {

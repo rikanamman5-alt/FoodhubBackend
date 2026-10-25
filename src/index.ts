@@ -3,10 +3,10 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import cookieParser from 'cookie-parser';
 
-import authRoutes from './routes/auth.routes.ts';
-import superadminRoutes from './routes/superadmin.routes.js';
-import merchantRoutes from './routes/merchant.routes.js';
-import customerRoutes from './routes/customer.routes.js';
+import authRoutes from './routes/auth.routes';
+import superadminRoutes from './routes/superadmin.routes';
+import merchantRoutes from './routes/merchant.routes';
+import customerRoutes from './routes/customer.routes';
 
 dotenv.config();
 
@@ -34,7 +34,7 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
 
-import uploadRoutes from './routes/upload.routes.js';
+import uploadRoutes from './routes/upload.routes';
 import path from 'path';
 import { fileURLToPath } from 'url';
 

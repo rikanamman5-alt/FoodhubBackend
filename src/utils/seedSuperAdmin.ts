@@ -1,5 +1,5 @@
 import bcrypt from 'bcryptjs';
-import { prisma } from '../prisma/client.js';
+import { prisma } from '../prisma/client';
 
 const seedSuperAdmin = async () => {
   try {

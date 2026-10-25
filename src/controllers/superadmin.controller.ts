@@ -1,7 +1,7 @@
 import { Response } from 'express';
 import bcrypt from 'bcryptjs';
-import prisma from '../prisma/client.js';
-import { AuthRequest } from '../middlewares/auth.middleware.js';
+import prisma from '../prisma/client';
+import { AuthRequest } from '../middlewares/auth.middleware';
 
 export const getDashboardStats = async (req: AuthRequest, res: Response) => {
   try {

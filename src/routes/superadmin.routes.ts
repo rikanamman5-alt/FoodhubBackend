@@ -13,8 +13,8 @@ import {
   updateSubscriptionSettings,
   updatePaymentSettings,
   getActivityLogs,
-} from '../controllers/superadmin.controller.js';
-import { protect, authorize } from '../middlewares/auth.middleware.js';
+} from '../controllers/superadmin.controller';
+import { protect, authorize } from '../middlewares/auth.middleware';
 
 const router = express.Router();
 

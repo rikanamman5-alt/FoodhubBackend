@@ -1,6 +1,6 @@
 import express from 'express';
-import { getStores, getStoreProducts, createOrder, getMyOrders, getPaymentSettings } from '../controllers/customer.controller.js';
-import { protect, authorize } from '../middlewares/auth.middleware.js';
+import { getStores, getStoreProducts, createOrder, getMyOrders, getPaymentSettings } from '../controllers/customer.controller';
+import { protect, authorize } from '../middlewares/auth.middleware';
 
 const router = express.Router();
 
