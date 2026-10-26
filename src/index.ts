@@ -11,10 +11,12 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get('/', (req, res) => res.send('OK'));
+app.get('/', (req, res) => res.send('FoodHub API is running! 🍽️'));
 app.post('/api/auth/login', (req, res) => {
-  if (req.body?.email === 'admin@foodhub.com' && req.body?.password === 'Admin@123456') {
-    return res.json({ success: true, data: { user: { role: 'SUPERADMIN', email: 'admin@foodhub.com', firstName: 'Super', lastName: 'Admin' }, token: 'x' } });
+  const email = req.body && req.body.email;
+  const password = req.body && req.body.password;
+  if (email === 'admin@foodhub.com' && password === 'Admin@123456') {
+    return res.json({ success: true, data: { user: { role: 'SUPERADMIN', email: 'admin@foodhub.com', firstName: 'Super', lastName: 'Admin', accountStatus: 'APPROVED', subscriptionStatus: 'ACTIVE' }, token: 'test' } });
   }
   return res.status(401).json({ success: false, message: 'Invalid credentials' });
 });
