@@ -30,6 +30,10 @@ app.get('/', (req, res) => {
   res.send('FoodHub API is running! 🍽️');
 });
 
+app.get('/health', (req, res) => {
+  res.json({ ok: true });
+});
+
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/auth', authRoutes);
 app.use('/api/superadmin', superadminRoutes);
