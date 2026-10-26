@@ -16,11 +16,8 @@ export const register = async (req: Request, res: Response) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const userRole = role === 'MERCHANT' ? 'MERCHANT' : 'CUSTOMER';
 
-    let trialDays = 7;
-    try {
-      const settings = await prisma.subscriptionSettings.findFirst();
-      if (settings?.defaultTrialDays) trialDays = settings.defaultTrialDays;
-    } catch (e) {}
+    const settings = await prisma.subscriptionSettings.findFirst().catch(() => null);
+    const trialDays = settings?.defaultTrialDays || 7;
 
     const user = await prisma.user.create({
       data: {
@@ -38,17 +35,19 @@ export const register = async (req: Request, res: Response) => {
 
     if (userRole === 'MERCHANT' && storeName) {
       try {
-        const slug = storeName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        const slug = (storeName.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'store') + '-' + Date.now();
         await prisma.store.create({
           data: {
             name: storeName,
-            slug: `${slug}-${Date.now()}`,
+            slug,
             address: storeAddress || '',
             phone: storePhone || phone || '',
             ownerId: user.id,
           },
         });
-      } catch (e) {}
+      } catch (e) {
+        console.error(e);
+      }
     }
 
     res.status(201).json({
@@ -56,9 +55,9 @@ export const register = async (req: Request, res: Response) => {
       message: 'Registration successful. Please wait for Super Admin approval.',
       data: { userId: user.id, email: user.email, role: user.role },
     });
-  } catch (error) {
+  } catch (error: any) {
     console.error(error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    res.status(500).json({ success: false, message: error.message || 'Server error' });
   }
 };
 
@@ -67,7 +66,7 @@ export const login = async (req: Request, res: Response) => {
     const { email, password } = req.body;
     if (!email || !password) return res.status(400).json({ success: false, message: 'Missing credentials' });
 
-    const user = await prisma.user.findUnique({ where: { email } });
+    const user = await prisma.user.findUnique({ where: { email: String(email).toLowerCase() } });
     if (!user) return res.status(401).json({ success: false, message: 'Invalid credentials' });
 
     const isMatch = await bcrypt.compare(password, user.password);
@@ -78,17 +77,21 @@ export const login = async (req: Request, res: Response) => {
     if (user.accountStatus === 'REJECTED') return res.status(403).json({ success: false, message: 'Account rejected' });
     if (user.accountStatus === 'SUSPENDED') return res.status(403).json({ success: false, message: 'Account suspended' });
 
-    if ((user.role === 'CUSTOMER' || user.role === 'MERCHANT')) {
+    if (user.role === 'CUSTOMER' || user.role === 'MERCHANT') {
       if (user.subscriptionStatus === 'EXPIRED' || user.subscriptionStatus === 'SUSPENDED') {
         return res.status(403).json({ success: false, message: 'Subscription expired' });
       }
       if (user.subscriptionEnd && new Date(user.subscriptionEnd) < new Date()) {
-        await prisma.user.update({ where: { id: user.id }, data: { subscriptionStatus: 'EXPIRED' } });
+        try {
+          await prisma.user.update({ where: { id: user.id }, data: { subscriptionStatus: 'EXPIRED' } });
+        } catch (e) {}
         return res.status(403).json({ success: false, message: 'Subscription expired' });
       }
     }
 
-    await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+    try {
+      await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
+    } catch (e) {}
 
     const token = generateToken(user.id);
 
@@ -115,14 +118,14 @@ export const login = async (req: Request, res: Response) => {
         token,
       },
     });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: 'Server error' });
+  } catch (error: any) {
+    console.error('LOGIN_ERR', error);
+    res.status(500).json({ success: false, message: error.message || 'Server error' });
   }
 };
 
 export const logout = async (req: Request, res: Response) => {
-  res.cookie('token', '', { httpOnly: true, expires: new Date(0) });
+  res.cookie('token', '', { httpOnly: true, secure: true, sameSite: 'none', expires: new Date(0) });
   res.json({ success: true, message: 'Logged out successfully' });
 };
 
@@ -133,7 +136,7 @@ export const getMe = async (req: AuthRequest, res: Response) => {
       include: { store: true },
     });
     res.json({ success: true, data: user });
-  } catch (error) {
+  } catch (error: any) {
     res.status(500).json({ success: false, message: 'Server error' });
   }
 };
