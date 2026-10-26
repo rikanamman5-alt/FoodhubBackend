@@ -16,8 +16,11 @@ export const register = async (req: Request, res: Response) => {
     const hashedPassword = await bcrypt.hash(password, 10);
     const userRole = role === 'MERCHANT' ? 'MERCHANT' : 'CUSTOMER';
 
-    const settings = await prisma.subscriptionSettings.findFirst();
-    const trialDays = settings?.defaultTrialDays || 7;
+    let trialDays = 7;
+    try {
+      const settings = await prisma.subscriptionSettings.findFirst();
+      if (settings?.defaultTrialDays) trialDays = settings.defaultTrialDays;
+    } catch (e) {}
 
     const user = await prisma.user.create({
       data: {
@@ -34,16 +37,18 @@ export const register = async (req: Request, res: Response) => {
     });
 
     if (userRole === 'MERCHANT' && storeName) {
-      const slug = storeName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-      await prisma.store.create({
-        data: {
-          name: storeName,
-          slug: `${slug}-${Date.now()}`,
-          address: storeAddress || '',
-          phone: storePhone || phone || '',
-          ownerId: user.id,
-        },
-      });
+      try {
+        const slug = storeName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+        await prisma.store.create({
+          data: {
+            name: storeName,
+            slug: `${slug}-${Date.now()}`,
+            address: storeAddress || '',
+            phone: storePhone || phone || '',
+            ownerId: user.id,
+          },
+        });
+      } catch (e) {}
     }
 
     res.status(201).json({
@@ -60,40 +65,26 @@ export const register = async (req: Request, res: Response) => {
 export const login = async (req: Request, res: Response) => {
   try {
     const { email, password } = req.body;
+    if (!email || !password) return res.status(400).json({ success: false, message: 'Missing credentials' });
 
     const user = await prisma.user.findUnique({ where: { email } });
-    if (!user) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
+    if (!user) return res.status(401).json({ success: false, message: 'Invalid credentials' });
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
+    if (!isMatch) return res.status(401).json({ success: false, message: 'Invalid credentials' });
 
-    if (!user.isActive) {
-      return res.status(403).json({ success: false, message: 'Account deactivated. Contact administrator.' });
-    }
+    if (!user.isActive) return res.status(403).json({ success: false, message: 'Account deactivated' });
+    if (user.accountStatus === 'PENDING') return res.status(403).json({ success: false, message: 'Account pending approval' });
+    if (user.accountStatus === 'REJECTED') return res.status(403).json({ success: false, message: 'Account rejected' });
+    if (user.accountStatus === 'SUSPENDED') return res.status(403).json({ success: false, message: 'Account suspended' });
 
-    if (user.accountStatus === 'PENDING') {
-      return res.status(403).json({ success: false, message: 'Account pending approval. Please wait for Super Admin approval.' });
-    }
-
-    if (user.accountStatus === 'REJECTED') {
-      return res.status(403).json({ success: false, message: 'Account rejected. Contact administrator.' });
-    }
-
-    if (user.accountStatus === 'SUSPENDED') {
-      return res.status(403).json({ success: false, message: 'Account suspended. Contact administrator.' });
-    }
-
-    if (user.role === 'CUSTOMER' || user.role === 'MERCHANT') {
+    if ((user.role === 'CUSTOMER' || user.role === 'MERCHANT')) {
       if (user.subscriptionStatus === 'EXPIRED' || user.subscriptionStatus === 'SUSPENDED') {
-        return res.status(403).json({ success: false, message: 'Subscription expired. Please wait for Super Admin to reactivate.' });
+        return res.status(403).json({ success: false, message: 'Subscription expired' });
       }
       if (user.subscriptionEnd && new Date(user.subscriptionEnd) < new Date()) {
         await prisma.user.update({ where: { id: user.id }, data: { subscriptionStatus: 'EXPIRED' } });
-        return res.status(403).json({ success: false, message: 'Subscription expired. Please wait for Super Admin to reactivate.' });
+        return res.status(403).json({ success: false, message: 'Subscription expired' });
       }
     }
 
