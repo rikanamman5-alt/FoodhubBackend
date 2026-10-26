@@ -26,6 +26,13 @@ app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/api/auth', authRoutes);
+app.use('/api/superadmin', superadminRoutes);
+app.use('/api/merchant', merchantRoutes);
+app.use('/api/customer', customerRoutes);
+app.use('/api/upload', uploadRoutes);
+
 app.get('/', (req, res) => {
   res.send('FoodHub API is running! 🍽️');
 });
@@ -34,14 +41,8 @@ app.get('/health', (req, res) => {
   res.json({ ok: true });
 });
 
-app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
-app.use('/api/auth', authRoutes);
-app.use('/api/superadmin', superadminRoutes);
-app.use('/api/merchant', merchantRoutes);
-app.use('/api/customer', customerRoutes);
-app.use('/api/upload', uploadRoutes);
-
 app.listen(process.env.PORT || 5000, '0.0.0.0', () => {
   console.log('Server running');
 });
+
 export default app;
