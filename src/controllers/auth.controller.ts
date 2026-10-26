@@ -87,7 +87,6 @@ export const login = async (req: Request, res: Response) => {
       return res.status(403).json({ success: false, message: 'Account suspended. Contact administrator.' });
     }
 
-    // Check subscription
     if (user.role === 'CUSTOMER' || user.role === 'MERCHANT') {
       if (user.subscriptionStatus === 'EXPIRED' || user.subscriptionStatus === 'SUSPENDED') {
         return res.status(403).json({ success: false, message: 'Subscription expired. Please wait for Super Admin to reactivate.' });
@@ -104,8 +103,8 @@ export const login = async (req: Request, res: Response) => {
 
     res.cookie('token', token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+      secure: true,
+      sameSite: 'none',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
